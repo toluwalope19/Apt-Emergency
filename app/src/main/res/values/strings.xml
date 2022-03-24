@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">AptEmergency</string>
+    <string name="unknown_error_message">Oops, something went wrong</string>
+    <string name="check_connectivity_message">Please check your connectivity</string>
+    <string name="can_not_connect_to_sever_message">Cannot connect to server</string>
 </resources>
