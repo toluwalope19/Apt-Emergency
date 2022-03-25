@@ -33,15 +33,15 @@ class MainViewModel @Inject constructor(
     fun sendEmergency(request: Request) {
 
         viewModelScope.launch {
-            _sendEmergency.postValue(UIEvent(Resource.Loading(null)))
+            _sendEmergency.postValue(UIEvent(Resource.loading(null)))
             try {
                 val response = repository.sendEmergency(request)
                 response.message?.let {
-                    _sendEmergency.postValue(UIEvent(Resource.Success(it)))
+                    _sendEmergency.postValue(UIEvent(Resource.success(it)))
                 }
             } catch (e: Throwable) {
                 // val errorMessage = apiError.extractErrorMessage(e)
-                _sendEmergency.postValue(UIEvent(Resource.Error(e)))
+                _sendEmergency.postValue(UIEvent(Resource.error(e)))
             }
         }
     }

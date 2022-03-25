@@ -7,7 +7,7 @@ import retrofit2.http.Body
 import retrofit2.http.POST
 
 interface ApiService {
-    @POST
+    @POST("create")
     suspend fun sendEmergency(
         @Body request: Request
     ): AptResponse<JsonObject>

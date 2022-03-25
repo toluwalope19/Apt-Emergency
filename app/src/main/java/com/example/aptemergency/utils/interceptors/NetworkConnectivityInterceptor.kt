@@ -1,8 +1,8 @@
-package com.example.top_up_weather.utils.interceptors
+package com.example.aptemergency.utils.interceptors
 
 import android.content.Context
 import android.net.ConnectivityManager
-import com.example.top_up_weather.utils.exceptions.NoNetworkException
+import com.example.aptemergency.utils.exceptions.NoNetworkException
 import okhttp3.Interceptor
 import okhttp3.Response
 

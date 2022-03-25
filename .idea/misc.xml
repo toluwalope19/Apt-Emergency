@@ -3,6 +3,9 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="..\:/Users/Ayodele/Desktop/AptEmergency/app/src/main/res/drawable/circle_gold_background.xml" value="0.2526041666666667" />
+        <entry key="..\:/Users/Ayodele/Desktop/AptEmergency/app/src/main/res/drawable/ic_photo_camera_svgrepo_com.xml" value="0.2526041666666667" />
+        <entry key="..\:/Users/Ayodele/Desktop/AptEmergency/app/src/main/res/drawable/new_edit_text_background.xml" value="0.2526041666666667" />
         <entry key="..\:/Users/Ayodele/Desktop/AptEmergency/app/src/main/res/layout/activity_main.xml" value="0.22083333333333333" />
       </map>
     </option>

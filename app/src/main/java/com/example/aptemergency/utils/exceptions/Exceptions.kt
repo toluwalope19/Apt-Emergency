@@ -1,4 +1,4 @@
-package com.example.top_up_weather.utils.exceptions
+package com.example.aptemergency.utils.exceptions
 
 import java.io.IOException
 

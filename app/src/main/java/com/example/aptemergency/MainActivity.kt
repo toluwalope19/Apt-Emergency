@@ -6,24 +6,34 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Build
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
-import androidx.core.content.ContentProviderCompat.requireContext
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModel
-import com.example.aptemergency.utils.GpsUtil
-import com.example.aptemergency.utils.LocationLiveData
+import com.bumptech.glide.Glide
+import com.example.aptemergency.data.model.Location
+import com.example.aptemergency.data.model.Request
+import com.example.aptemergency.utils.*
 import com.example.aptemergency.utils.Utils.observeOnce
 import com.example.aptemergency.viewmodel.MainViewModel
 import com.google.android.material.snackbar.Snackbar
+import com.google.android.material.textfield.TextInputLayout
+import com.otaliastudios.cameraview.CameraException
+import com.otaliastudios.cameraview.CameraListener
+import com.otaliastudios.cameraview.CameraView
+import com.otaliastudios.cameraview.PictureResult
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.android.synthetic.main.activity_main.*
+import java.util.*
 
 
 @AndroidEntryPoint
@@ -33,27 +43,173 @@ class MainActivity : AppCompatActivity() {
     private val storageRequestCode = 1002
     private val LOCATION_REQUEST_CODE = 123
     private val GPS_REQUEST_CHECK_SETTINGS = 102
-    private val REQUIRED_LOCATION_PERMISSIONS = arrayOf(
+    private val SNAPSHOT_REQUEST_CODE = 101
+    private var bitmap: Bitmap? = null
+    private val requiredLocationPermissions = arrayOf(
         Manifest.permission.ACCESS_FINE_LOCATION,
         Manifest.permission.ACCESS_COARSE_LOCATION
     )
+
+    private val perms = arrayOf(
+        android.Manifest.permission.CAMERA,
+        android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+    )
+
     private var isGPSEnabled = false
     private var locationModel: LocationLiveData.LocationModel? = null
-    private var cameraBitmap: Bitmap? = null
+    private var photoTaken: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
         GpsUtil(this).turnGPSOn(object : GpsUtil.OnGpsListener {
             override fun gpsStatus(isGPSEnabled: Boolean) {
                 this@MainActivity.isGPSEnabled = isGPSEnabled
             }
         })
 
-        tv.setOnClickListener {
-            Toast.makeText(this, "(${locationModel?.latitude} ${locationModel?.longitude})", Toast.LENGTH_LONG).show()
+        val camera = findViewById<CameraView>(R.id.camera)
+        camera.setLifecycleOwner(this)
+
+        setUpObserver()
+        takePicture.setOnClickListener {
+            if (checkStoragePermission()) {
+                if(camera.isVisible){
+                   camera.takePicture()
+                }
+            } else {
+                requestCameraAndFileWritePermissions()
+            }
+        }
+
+        removePicture.setOnClickListener {
+            removePicture()
+        }
+
+        sendRequest.setOnClickListener {
+            takePhotoAndSendEmergency()
+        }
+
+
+        camera.addCameraListener(object : CameraListener() {
+
+            @RequiresApi(Build.VERSION_CODES.O)
+            override fun onPictureTaken(result: PictureResult) {
+                // Access the raw data if needed.
+
+                photoTaken = result.data.toBase64()
+                bitmap = BitmapFactory.decodeByteArray(result.data, 0, result.data.size)
+                Glide.with(this@MainActivity).load(bitmap).into(preview)
+                camera.visibility = View.GONE
+                preview.visibility = View.VISIBLE
+            }
+
+            override fun onCameraError(exception: CameraException) {
+                super.onCameraError(exception)
+                Snackbar.make(
+                    findViewById(R.id.content),
+                    exception.message!!,
+                    Snackbar.LENGTH_SHORT
+                ).show()
+            }
+        })
+    }
+
+
+
+    private fun takePhotoAndSendEmergency() {
+        try {
+            if (bitmap == null) throw ValidationException("please take a picture")
+            val photo = photoTaken
+            val phone1 =
+                emergency_number_one.validateWithValueOrThrow("please enter first emergency number")
+            val phone2 =
+                emergency_number_two.validateWithValueOrThrow("please enter second emergency number")
+            val longitude = locationModel?.longitude.toString()
+            val latitude = locationModel?.latitude.toString()
+            val numbers = listOf(phone1, phone2)
+            val request = Request(numbers, photo!!, Location(longitude, latitude))
+            Log.e("request", request.toString())
+            viewModel.sendEmergency(request)
+
+        } catch (e: ValidationException) {
+            Snackbar.make(findViewById(R.id.content), e.message!!, Snackbar.LENGTH_SHORT).show()
         }
     }
+
+    private fun setUpObserver() {
+        viewModel.sendEmergency.observe(this, Observer { response ->
+            response.getContentIfNotHandled()?.let {
+
+                when (it.status) {
+                    Resource.Status.LOADING -> {
+                        progress.visibility = View.VISIBLE
+                        !takePicture.isClickable
+                    }
+                    Resource.Status.SUCCESS -> {
+                        Log.e("image", it.data.toString())
+                        Toast.makeText(this, it.data, Toast.LENGTH_SHORT)
+                            .show()
+                        takePicture.isClickable
+                        camera.visibility = View.VISIBLE
+                        preview.visibility = View.GONE
+                        progress.visibility = View.GONE
+                    }
+                    Resource.Status.ERROR -> {
+                        progress.visibility = View.GONE
+                        Toast.makeText(this, it.data!!, Toast.LENGTH_SHORT)
+                            .show()
+                    }
+                }
+            }
+        })
+    }
+
+    private fun removePicture() {
+        if (bitmap != null) {
+            bitmap = null
+            camera.visibility = View.VISIBLE
+            preview.visibility = View.GONE
+        } else {
+            Snackbar.make(
+                findViewById(R.id.content),
+                "Please take a picture first",
+                Snackbar.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun ByteArray.toBase64(): String =
+        String(Base64.getEncoder().encode(this))
+
+    private fun checkStoragePermission(): Boolean {
+        val cameraPermission = ContextCompat.checkSelfPermission(
+            applicationContext,
+            android.Manifest.permission.CAMERA
+        )
+
+        val writeFilePermission = ContextCompat.checkSelfPermission(
+            applicationContext,
+            android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+        )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return cameraPermission == PackageManager.PERMISSION_GRANTED
+                    || writeFilePermission == PackageManager.PERMISSION_GRANTED
+        }
+        return true
+    }
+
+    private fun requestCameraAndFileWritePermissions() {
+        ActivityCompat.requestPermissions(
+            this,
+            perms,
+            SNAPSHOT_REQUEST_CODE
+        )
+    }
+
 
     @RequiresApi(Build.VERSION_CODES.M)
     override fun onStart() {
@@ -72,24 +228,24 @@ class MainActivity : AppCompatActivity() {
         if (requestCode == LOCATION_REQUEST_CODE) {
             invokeLocationAction()
         }
-//        when (requestCode) {
-//            storageRequestCode -> {
-//                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-//                    clearImageOrLaunchImageCaptureIntent()
-//                } else {
-//                    Toast.makeText(this, "Permission is required", Toast.LENGTH_LONG)
-//                        .show()
-//                }
-//            }
-//        }
+        when (requestCode) {
+            storageRequestCode -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // clearImageOrLaunchImageCaptureIntent()
+                } else {
+                    Toast.makeText(this, "Permission is required", Toast.LENGTH_LONG)
+                        .show()
+                }
+            }
+        }
     }
 
-    private fun locationPermissionGranted() = REQUIRED_LOCATION_PERMISSIONS.all {
+    private fun locationPermissionGranted() = requiredLocationPermissions.all {
         ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
     }
 
     @RequiresApi(Build.VERSION_CODES.M)
-    private fun shouldShowRequestLocationPermissionRationale() = REQUIRED_LOCATION_PERMISSIONS.all {
+    private fun shouldShowRequestLocationPermissionRationale() = requiredLocationPermissions.all {
         shouldShowRequestPermissionRationale(it)
     }
 
@@ -114,7 +270,7 @@ class MainActivity : AppCompatActivity() {
                     .setPositiveButton(
                         "Ask me"
                     ) { _, _ ->
-                        requestPermissions(REQUIRED_LOCATION_PERMISSIONS, LOCATION_REQUEST_CODE)
+                        requestPermissions(requiredLocationPermissions, LOCATION_REQUEST_CODE)
                     }
                     .show()
             }
@@ -128,7 +284,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             else -> {
-                requestPermissions(REQUIRED_LOCATION_PERMISSIONS, LOCATION_REQUEST_CODE)
+                requestPermissions(requiredLocationPermissions, LOCATION_REQUEST_CODE)
             }
         }
     }
@@ -139,22 +295,32 @@ class MainActivity : AppCompatActivity() {
         when (resultCode) {
             Activity.RESULT_OK -> {
                 when (requestCode) {
-
                     GPS_REQUEST_CHECK_SETTINGS -> {
                         isGPSEnabled = true
                         invokeLocationAction()
                     }
-
-                    else -> {
-//                        val fileUri = data?.data
-//                        fileUri?.let {
-//                            updateImage(it)
-//                            cropSelectedImage(it)
-                    }
-
                 }
-
             }
         }
+    }
+
+
+    @Throws(ValidationException::class)
+    fun TextInputLayout.validateWithValueOrThrow(
+        labelName: String,
+    ): String {
+
+        var value = this.editText?.text.toString()
+
+        //Validate that it contain something
+        if (value.trim().isBlank()) {
+            this.error = "$labelName is required"
+            this.isErrorEnabled = true
+            throw  ValidationException("$labelName is required")
+        }
+
+        this.error = " "
+        this.isErrorEnabled = false
+        return value.trim()
     }
 }

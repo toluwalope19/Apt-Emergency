@@ -2,8 +2,8 @@ package com.example.aptemergency.utils
 
 import android.content.Context
 import com.example.aptemergency.R
-import com.example.top_up_weather.utils.exceptions.NoNetworkException
-import com.example.top_up_weather.utils.exceptions.ServerException
+import com.example.aptemergency.utils.exceptions.NoNetworkException
+import com.example.aptemergency.utils.exceptions.ServerException
 import com.google.gson.Gson
 import retrofit2.HttpException
 import javax.inject.Inject
@@ -39,5 +39,5 @@ class ApiError @Inject constructor(private val gson: Gson, private val context: 
         val success: String,
         val message: String
     )
-
 }
+class ValidationException (message:String)  : Exception(message)

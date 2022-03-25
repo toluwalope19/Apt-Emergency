@@ -6,8 +6,8 @@ import com.example.aptemergency.data.api.RemoteImpl
 import com.example.aptemergency.data.api.RemoteSource
 import com.example.aptemergency.repository.EmergencyRepository
 import com.example.aptemergency.utils.ApiError
-import com.example.top_up_weather.utils.interceptors.NetworkConnectivityInterceptor
-import com.example.top_up_weather.utils.interceptors.NetworkResponseInterceptor
+import com.example.aptemergency.utils.interceptors.NetworkConnectivityInterceptor
+import com.example.aptemergency.utils.interceptors.NetworkResponseInterceptor
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.otaliastudios.cameraview.BuildConfig
@@ -47,7 +47,7 @@ class ApplicationModule {
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit =
         Retrofit.Builder()
             .addConverterFactory(GsonConverterFactory.create())
-            .baseUrl("http://dummy.restapiexample.com/api/v1/create/")
+            .baseUrl("http://dummy.restapiexample.com/api/v1/")
             .client(okHttpClient)
             .build()
 
@@ -79,4 +79,5 @@ class ApplicationModule {
     ): EmergencyRepository {
         return EmergencyRepository(remoteSource)
     }
+
 }

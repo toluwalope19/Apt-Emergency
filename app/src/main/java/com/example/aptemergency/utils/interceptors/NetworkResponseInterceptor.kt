@@ -1,7 +1,7 @@
-package com.example.top_up_weather.utils.interceptors
+package com.example.aptemergency.utils.interceptors
 
-import com.example.top_up_weather.utils.exceptions.NetworkException
-import com.example.top_up_weather.utils.exceptions.ServerException
+import com.example.aptemergency.utils.exceptions.NetworkException
+import com.example.aptemergency.utils.exceptions.ServerException
 import okhttp3.Interceptor
 import okhttp3.Response
 
