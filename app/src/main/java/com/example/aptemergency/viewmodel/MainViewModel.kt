@@ -30,6 +30,7 @@ class MainViewModel @Inject constructor(
 
     fun getLocation(): LocationLiveData = locationLiveData
 
+
     fun sendEmergency(request: Request) {
 
         viewModelScope.launch {

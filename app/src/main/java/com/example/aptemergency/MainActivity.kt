@@ -83,8 +83,8 @@ class MainActivity : AppCompatActivity() {
         setSosNumbers()
         takePicture.setOnClickListener {
             if (checkStoragePermission()) {
-                if(camera.isVisible){
-                   camera.takePicture()
+                if (camera.isVisible) {
+                    camera.takePicture()
                     invokeLocationAction()
                 }
             } else {
@@ -116,16 +116,16 @@ class MainActivity : AppCompatActivity() {
 
             override fun onCameraError(exception: CameraException) {
                 super.onCameraError(exception)
-                Snackbar.make(
-                    findViewById(R.id.content),
+                Toast.makeText(
+                    this@MainActivity,
                     exception.message!!,
-                    Snackbar.LENGTH_SHORT
+                    Toast.LENGTH_SHORT
                 ).show()
             }
         })
     }
 
-    private fun setSosNumbers(){
+    private fun setSosNumbers() {
         val firstNumber = sharedPreferences.getString(Constants.PREF_PHONE_ONE, "")
         val secondNumber = sharedPreferences.getString(Constants.PREF_PHONE_TWO, "")
         emergency_number_one.editText?.setText(firstNumber)
@@ -147,7 +147,6 @@ class MainActivity : AppCompatActivity() {
             val latitude = locationModel?.latitude.toString()
             val numbers = listOf(phone1, phone2)
             val request = Request(numbers, photo!!, Location(longitude, latitude))
-            Log.e("request", request.toString())
             viewModel.sendEmergency(request)
 
         } catch (e: ValidationException) {
@@ -163,6 +162,7 @@ class MainActivity : AppCompatActivity() {
                     Resource.Status.LOADING -> {
                         progress.visibility = View.VISIBLE
                         !takePicture.isClickable
+                        !removePicture.isClickable
                     }
                     Resource.Status.SUCCESS -> {
                         Log.e("image", it.data.toString())
