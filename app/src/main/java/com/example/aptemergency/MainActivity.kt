@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -34,12 +35,17 @@ import com.otaliastudios.cameraview.PictureResult
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.android.synthetic.main.activity_main.*
 import java.util.*
+import javax.inject.Inject
 
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
     private val viewModel: MainViewModel by viewModels()
+
+    @Inject
+    lateinit var sharedPreferences: SharedPreferences
+
     private val storageRequestCode = 1002
     private val LOCATION_REQUEST_CODE = 123
     private val GPS_REQUEST_CHECK_SETTINGS = 102
@@ -59,6 +65,7 @@ class MainActivity : AppCompatActivity() {
     private var locationModel: LocationLiveData.LocationModel? = null
     private var photoTaken: String? = null
 
+    @RequiresApi(Build.VERSION_CODES.M)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -73,10 +80,12 @@ class MainActivity : AppCompatActivity() {
         camera.setLifecycleOwner(this)
 
         setUpObserver()
+        setSosNumbers()
         takePicture.setOnClickListener {
             if (checkStoragePermission()) {
                 if(camera.isVisible){
                    camera.takePicture()
+                    invokeLocationAction()
                 }
             } else {
                 requestCameraAndFileWritePermissions()
@@ -116,6 +125,12 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    private fun setSosNumbers(){
+        val firstNumber = sharedPreferences.getString(Constants.PREF_PHONE_ONE, "")
+        val secondNumber = sharedPreferences.getString(Constants.PREF_PHONE_TWO, "")
+        emergency_number_one.editText?.setText(firstNumber)
+        emergency_number_two.editText?.setText(secondNumber)
+    }
 
 
     private fun takePhotoAndSendEmergency() {
@@ -123,9 +138,11 @@ class MainActivity : AppCompatActivity() {
             if (bitmap == null) throw ValidationException("please take a picture")
             val photo = photoTaken
             val phone1 =
-                emergency_number_one.validateWithValueOrThrow("please enter first emergency number")
+                emergency_number_one.validateWithValueOrThrow(" first emergency number")
             val phone2 =
-                emergency_number_two.validateWithValueOrThrow("please enter second emergency number")
+                emergency_number_two.validateWithValueOrThrow("second emergency number")
+            sharedPreferences.edit().putString(Constants.PREF_PHONE_ONE, phone1).apply()
+            sharedPreferences.edit().putString(Constants.PREF_PHONE_TWO, phone2).apply()
             val longitude = locationModel?.longitude.toString()
             val latitude = locationModel?.latitude.toString()
             val numbers = listOf(phone1, phone2)
@@ -134,7 +151,7 @@ class MainActivity : AppCompatActivity() {
             viewModel.sendEmergency(request)
 
         } catch (e: ValidationException) {
-            Snackbar.make(findViewById(R.id.content), e.message!!, Snackbar.LENGTH_SHORT).show()
+            Toast.makeText(this, e.message!!, Toast.LENGTH_LONG).show()
         }
     }
 
@@ -172,10 +189,10 @@ class MainActivity : AppCompatActivity() {
             camera.visibility = View.VISIBLE
             preview.visibility = View.GONE
         } else {
-            Snackbar.make(
-                findViewById(R.id.content),
+            Toast.makeText(
+                this,
                 "Please take a picture first",
-                Snackbar.LENGTH_SHORT
+                Toast.LENGTH_SHORT
             ).show()
         }
     }

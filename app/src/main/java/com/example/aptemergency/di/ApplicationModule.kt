@@ -1,11 +1,13 @@
 package com.example.aptemergency.di
 
 import android.content.Context
+import android.content.SharedPreferences
 import com.example.aptemergency.data.api.ApiService
 import com.example.aptemergency.data.api.RemoteImpl
 import com.example.aptemergency.data.api.RemoteSource
 import com.example.aptemergency.repository.EmergencyRepository
 import com.example.aptemergency.utils.ApiError
+import com.example.aptemergency.utils.Constants
 import com.example.aptemergency.utils.interceptors.NetworkConnectivityInterceptor
 import com.example.aptemergency.utils.interceptors.NetworkResponseInterceptor
 import com.google.gson.Gson
@@ -79,5 +81,10 @@ class ApplicationModule {
     ): EmergencyRepository {
         return EmergencyRepository(remoteSource)
     }
+
+    @Provides
+    @Singleton
+    fun provideSharedPreferences(@ApplicationContext context: Context): SharedPreferences =
+        context.applicationContext.getSharedPreferences(Constants.SHARED_PREF_NAME, Context.MODE_PRIVATE)
 
 }
